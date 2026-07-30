@@ -354,7 +354,6 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
     );
   }
 
-  // यूज़र रजिस्ट्रेशन स्क्रीन (जब ऐप पहली बार खुले या प्रोफाइल एडिट करनी हो)
   Widget _buildUserRegistrationScreen() {
     return Center(
       child: SingleChildScrollView(
@@ -565,7 +564,6 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
     );
   }
 
-  // चेकआउट और आर्डर कन्फर्मेशन (दुकानदार और डिलीवरी के लिए अलर्ट ट्रिगर)
   void _showCartDialog() {
     double totalAmount = _cart.fold(0, (sum, item) => sum + (item['price'] as double));
     String targetShopUpi = _cart.isNotEmpty ? _cart.first['shop_upi'] : 'vendor@upi';
@@ -645,7 +643,6 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
 
                 Navigator.pop(context);
                 
-                // दुकानदार और डिलीवरी बॉय के लिए पॉप-अप नोटिफिकेशन अलर्ट
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -668,14 +665,12 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
     );
   }
 
-  // दुकानदार और डिलीवरी बॉय के लिए लाइव आर्डर डैशबोर्ड और नोटिफिकेशन पैनल
   Widget _buildShopAndDeliveryPanel() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔔 लाइव आर्डर अलर्ट्स (दुकानदार और डिलीवरी बॉय के लिए)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -701,8 +696,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
                 _incomingOrders.isEmpty
                     ? const Text('अभी कोई नया आर्डर नहीं है। ग्राहक के आर्डर का इंतज़ार है...', style: TextStyle(color: Colors.grey, fontSize: 12))
                     : ListView.builder(
-                        shrinkId: true,
-                        shrinkWrap: true,
+                        shrinkWrap: true, // यहाँ 'shrinkId' को ठीक करके 'shrinkWrap' कर दिया गया है
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _incomingOrders.length,
                         itemBuilder: (context, index) {
@@ -753,7 +747,6 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
           ),
           const SizedBox(height: 16),
 
-          // नई दुकान रजिस्टर करने का फॉर्म
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFF1E293B), borderRadius: BorderRadius.circular(12)),
@@ -807,7 +800,6 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
           ),
           const SizedBox(height: 16),
 
-          // दुकान में आइटम जोड़ने का फॉर्म
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFF1E293B), borderRadius: BorderRadius.circular(12)),
