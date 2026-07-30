@@ -1,5 +1,5 @@
 name: vizia_marketplace
-description: A zero-inventory multi-vendor marketplace app
+description: A zero-inventory multi-vendor app
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,14 +11,13 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^2.5.0
   shared_preferences: ^2.2.3
-  image_picker: ^1.0.7   # <-- इसे यहाँ जोड़ना ज़रूरी है!
+  image_picker: ^1.0.7
   file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  
-  
+
 flutter:
   uses-material-design: true
