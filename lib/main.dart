@@ -1,17 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // यहाँ अपनी Supabase Key और URL डालें
-  await Supabase.initialize(
-    url: 'YOUR_SUPABASE_URL',
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  );
-
   runApp(const ViziaMarketplaceApp());
 }
 
@@ -45,13 +39,37 @@ class MarketplaceFeedScreen extends StatefulWidget {
 class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
   String _searchQuery = "";
   final List<Map<String, dynamic>> _cart = [];
+  bool _isSupabaseInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSupabaseConfig();
+  }
+
+  Future<void> _checkSupabaseConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final url = prefs.getString('supabase_url') ?? '';
+    final key = prefs.getString('supabase_key') ?? '';
+
+    if (url.isNotEmpty && key.isNotEmpty) {
+      try {
+        await Supabase.initialize(url: url, anonKey: key);
+        setState(() {
+          _isSupabaseInitialized = true;
+        });
+      } catch (e) {
+        // Initialization error handled silently or show settings
+      }
+    }
+  }
 
   void _addToCart(String productName, double price, String shopName) {
     setState(() {
       _cart.add({'name': productName, 'price': price, 'shop': shopName});
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$productName कार्ट में जोड़ा गया!'), duration: const Duration(seconds: 1)),
+      SnackBar(content: Text('$productName कार्ट में जोड़ दिया गया!'), duration: const Duration(seconds: 1)),
     );
   }
 
@@ -59,7 +77,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vizia Marketplace Faridabad'),
+        title: const Text('Vizia Marketplace'),
         backgroundColor: Colors.teal[800],
         actions: [
           // कार्ट आइकॉन
@@ -67,9 +85,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.shopping_cart),
-                onPressed: () {
-                  _showCartModal(context);
-                },
+                onPressed: () => _showCartModal(context),
               ),
               if (_cart.isNotEmpty)
                 Positioned(
@@ -88,184 +104,223 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
                 ),
             ],
           ),
-          // वेंडर एडमिन लॉगिन बटन
+          // वेंडर लॉगिन बटन
           IconButton(
             icon: const Icon(Icons.admin_panel_settings),
-            onPressed: () {
-              _showVendorLoginDialog(context);
+            onPressed: () => _showVendorLoginDialog(context),
+          ),
+          // सेटिंग्स बटन (URL और Key डालने के लिए)
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+              _checkSupabaseConfig();
             },
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // सर्च बार
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'दुकान या सामान सर्च करें (जैसे: अनार, सेब)...',
-                prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
-                filled: true,
-                fillColor: Colors.grey[900],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      body: !_isSupabaseInitialized
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 60, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'कृपया सेटिंग्स में जाकर अपनी Supabase URL और Key दर्ज करें!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        );
+                        _checkSupabaseConfig();
+                      },
+                      child: const Text('सेटिंग्स खोलें'),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-          
-          // लाइव फीड और शॉप्स लिस्ट
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: Supabase.instance.client.from('shops').stream(primaryKey: ['id']),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.teal));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'अभी कोई दुकान उपलब्ध नहीं है।',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+            )
+          : Column(
+              children: [
+                // सर्च बार
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'दुकान या सामान सर्च करें...',
+                      prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
-                  );
-                }
+                  ),
+                ),
+                
+                // लाइव फीड और शॉप्स लिस्ट
+                Expanded(
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: Supabase.instance.client.from('shops').stream(primaryKey: ['id']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: Colors.teal));
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'अभी कोई दुकान उपलब्ध नहीं है।',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        );
+                      }
 
-                final shops = snapshot.data!;
+                      final shops = snapshot.data!;
 
-                return ListView.builder(
-                  itemCount: shops.length,
-                  itemBuilder: (context, index) {
-                    final shop = shops[index];
-                    final shopName = shop['shop_name'] ?? 'Unnamed Shop';
-                    final ownerName = shop['owner_name'] ?? '';
-                    final shopImage = shop['shop_image'] ?? '';
-                    final ownerImage = shop['owner_image'] ?? '';
-                    final shopId = shop['id'].toString();
+                      return ListView.builder(
+                        itemCount: shops.length,
+                        itemBuilder: (context, index) {
+                          final shop = shops[index];
+                          final shopName = shop['shop_name'] ?? 'Unnamed Shop';
+                          final ownerName = shop['owner_name'] ?? '';
+                          final shopImage = shop['shop_image'] ?? '';
+                          final ownerImage = shop['owner_image'] ?? '';
+                          final shopId = shop['id'].toString();
 
-                    if (_searchQuery.isNotEmpty && !shopName.toLowerCase().contains(_searchQuery)) {
-                      return const SizedBox.shrink();
-                    }
+                          if (_searchQuery.isNotEmpty && !shopName.toLowerCase().contains(_searchQuery)) {
+                            return const SizedBox.shrink();
+                          }
 
-                    return Card(
-                      margin: const EdgeInsets.all(10),
-                      color: Colors.grey[900],
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (shopImage.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                              child: Image.network(
-                                shopImage,
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          
-                          Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
+                          return Card(
+                            margin: const EdgeInsets.all(10),
+                            color: Colors.grey[900],
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundImage: ownerImage.isNotEmpty ? NetworkImage(ownerImage) : null,
-                                  child: ownerImage.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                if (shopImage.isNotEmpty)
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                    child: Image.network(
+                                      shopImage,
+                                      height: 160,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                
+                                Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        shopName,
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                      CircleAvatar(
+                                        radius: 24,
+                                        backgroundImage: ownerImage.isNotEmpty ? NetworkImage(ownerImage) : null,
+                                        child: ownerImage.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Owner: $ownerName',
-                                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              shopName,
+                                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Owner: $ownerName',
+                                              style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
+
+                                const Divider(color: Colors.grey, height: 1),
+
+                                // उस दुकान के प्रोडक्ट्स की लाइव लिस्ट
+                                StreamBuilder<List<Map<String, dynamic>>>(
+                                  stream: Supabase.instance.client
+                                      .from('products')
+                                      .stream(primaryKey: ['id'])
+                                      .eq('shop_id', shopId),
+                                  builder: (context, productSnapshot) {
+                                    if (!productSnapshot.hasData || productSnapshot.data!.isEmpty) {
+                                      return const Padding(
+                                        padding: EdgeInsets.all(16.0),
+                                        child: Text(
+                                          'इस दुकान पर अभी कोई सामान लिस्ट नहीं है।',
+                                          style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                                        ),
+                                      );
+                                    }
+
+                                    final products = productSnapshot.data!;
+
+                                    return ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: products.length,
+                                      itemBuilder: (context, pIndex) {
+                                        final product = products[pIndex];
+                                        final productName = product['product_name'] ?? '';
+                                        final productPrice = (product['price'] ?? 0).toDouble();
+                                        final productImage = product['product_image'] ?? '';
+
+                                        return ListTile(
+                                          leading: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: productImage.isNotEmpty
+                                                ? Image.network(productImage, width: 50, height: 50, fit: BoxFit.cover)
+                                                : Container(width: 50, height: 50, color: Colors.grey[800], child: const Icon(Icons.shopping_bag)),
+                                          ),
+                                          title: Text(productName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                          subtitle: Text('₹$productPrice', style: const TextStyle(color: Colors.greenAccent)),
+                                          trailing: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                                            onPressed: () => _addToCart(productName, productPrice, shopName),
+                                            child: const Text('Add'),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
                               ],
                             ),
-                          ),
-
-                          const Divider(color: Colors.grey, height: 1),
-
-                          // उस दुकान के प्रोडक्ट्स की लाइव लिस्ट
-                          StreamBuilder<List<Map<String, dynamic>>>(
-                            stream: Supabase.instance.client
-                                .from('products')
-                                .stream(primaryKey: ['id'])
-                                .eq('shop_id', shopId),
-                            builder: (context, productSnapshot) {
-                              if (!productSnapshot.hasData || productSnapshot.data!.isEmpty) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Text(
-                                    'इस दुकान पर अभी कोई सामान लिस्ट नहीं है।',
-                                    style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-                                  ),
-                                );
-                              }
-
-                              final products = productSnapshot.data!;
-
-                              return ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: products.length,
-                                itemBuilder: (context, pIndex) {
-                                  final product = products[pIndex];
-                                  final productName = product['product_name'] ?? '';
-                                  final productPrice = (product['price'] ?? 0).toDouble();
-                                  final productImage = product['product_image'] ?? '';
-
-                                  return ListTile(
-                                    leading: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: productImage.isNotEmpty
-                                          ? Image.network(productImage, width: 50, height: 50, fit: BoxFit.cover)
-                                          : Container(width: 50, height: 50, color: Colors.grey[800], child: const Icon(Icons.shopping_bag)),
-                                    ),
-                                    title: Text(productName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    subtitle: Text('₹$productPrice', style: const TextStyle(color: Colors.greenAccent)),
-                                    trailing: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                                      onPressed: () => _addToCart(productName, productPrice, shopName),
-                                      child: const Text('Add'),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
-  // वेंडर लॉगिन डायलॉग (पिन लॉक के साथ)
+  // वेंडर लॉगिन डायलॉग (अलग एडमिन पैनल के लिए)
   void _showVendorLoginDialog(BuildContext context) {
     final TextEditingController shopIdController = TextEditingController();
     final TextEditingController pinController = TextEditingController();
@@ -290,7 +345,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Secret PIN / Password', labelStyle: TextStyle(color: Colors.grey)),
+                decoration: const InputDecoration(labelText: 'Secret PIN', labelStyle: TextStyle(color: Colors.grey)),
               ),
             ],
           ),
@@ -380,7 +435,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// 2. VENDOR ADMIN PANEL (फोटो और मल्टीपल आइटम सपोर्ट के साथ)
+// 2. VENDOR ADMIN PANEL (फोटो अपलोड और प्रोडक्ट जोड़ने की सुविधा के साथ)
 // -----------------------------------------------------------------------------
 class VendorAdminPanel extends StatefulWidget {
   final String shopId;
@@ -451,7 +506,7 @@ class _VendorAdminPanelState extends State<VendorAdminPanel> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('सामान सफलतापूर्वक जुड़ गया! अब अगला सामान जोड़ें।'),
+          content: Text('सामान सफलतापूर्वक जुड़ गया!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -483,6 +538,7 @@ class _VendorAdminPanelState extends State<VendorAdminPanel> {
             ),
             const SizedBox(height: 15),
 
+            // फोटो पिकर बॉक्स
             Center(
               child: GestureDetector(
                 onTap: _pickImage,
@@ -516,7 +572,7 @@ class _VendorAdminPanelState extends State<VendorAdminPanel> {
               controller: _productNameController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'सामान का नाम (जैसे: अनार, सेब, दूध)',
+                labelText: 'सामान का नाम (जैसे: अनार, सेब)',
                 labelStyle: const TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Colors.grey[900],
@@ -549,10 +605,99 @@ class _VendorAdminPanelState extends State<VendorAdminPanel> {
                     ),
                     onPressed: _saveProduct,
                     child: const Text(
-                      "सामान सेव करें और दूसरा जोड़ें ➕",
+                      "सामान सेव करें ➕",
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 3. SETTINGS SCREEN (Supabase URL और Key डालने के लिए)
+// -----------------------------------------------------------------------------
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _keyController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _urlController.text = prefs.getString('supabase_url') ?? '';
+      _keyController.text = prefs.getString('supabase_key') ?? '';
+    });
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('supabase_url', _urlController.text.trim());
+    await prefs.setString('supabase_key', _keyController.text.trim());
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('सेटिंग्स सेव हो गई हैं! ऐप रीस्टार्ट करें।'), backgroundColor: Colors.green),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        title: const Text('Supabase Settings'),
+        backgroundColor: Colors.teal[800],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _urlController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Supabase URL',
+                labelStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[900],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _keyController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Supabase Anon Key',
+                labelStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[900],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              onPressed: _saveSettings,
+              child: const Text('Save Settings', style: TextStyle(fontSize: 16)),
+            ),
           ],
         ),
       ),
