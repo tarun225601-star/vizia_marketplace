@@ -326,7 +326,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
                 padding: const EdgeInsets.all(12),
                 color: const Color(0xFF0F172A),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.between,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Column(
@@ -373,7 +373,7 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.between,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Column(
@@ -483,11 +483,11 @@ class _MarketplaceFeedScreenState extends State<MarketplaceFeedScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Column(
                 children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.between, children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     const Text('Total Items Price:', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     Text('₹${totalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                   ]),
-                  Row(mainAxisAlignment: MainAxisAlignment.between, children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     const Text('Platform Cut (10%):', style: TextStyle(color: Color(0xFF10B981), fontSize: 12)),
                     Text('+₹${platformCut.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
                   ]),
